@@ -42,7 +42,7 @@ app.post("/confirm", async (req, res) => {
 });
 
 app.get("/status", async (req, res) => {
-  const { sessionId } = req.query;
+  const { sessionId } = req.body;
   const session = await getSession(sessionId);
 
   if (!session) {
