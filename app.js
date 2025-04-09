@@ -1,9 +1,12 @@
 const express = require("express");
 const { v4: uuidv4 } = require("uuid");
 const QRCode = require("qrcode");
+const bitcoin = require("bitcoinjs-lib");
 const { setSession, getSession } = require("./utils/sessionStore");
 const app = express();
 const port = process.env.PORT | 8000;
+// testnet 설정
+const network = bitcoin.networks.testnet;
 
 app.use(express.json());
 
@@ -13,18 +16,18 @@ app.get("/", (req, res) => {
 
 app.get("/generate", async (req, res) => {
   const sessionId = uuidv4();
-  const { receiverPubKey, senderPubKey } = req.body;
+  const { receiverPubKey, amount } = req.body;
   await setSession(sessionId, {
     status: "PENDING",
     receiverPubKey,
-    senderPubKey,
+    amount,
   });
 
-  res.json({ sessionId });
+  res.json({ sessionId, receiverPubKey });
 });
 
 app.post("/confirm", async (req, res) => {
-  const { sessionId, bitcoinTx, senderPubKey } = req.body;
+  const { sessionId, rawTx } = req.body;
   const session = await getSession(sessionId);
 
   if (!session || session.status !== "PENDING") {
@@ -32,13 +35,29 @@ app.post("/confirm", async (req, res) => {
   }
 
   //bitcoinTX request
-  // check senderPubKey
-  // check receiverPubKey
-  // sendTX
+  // check receiverPubKey & amount
+  const receiverPubKey = session.receiverPubKey;
+  const amount = session.amount;
+  const tx = bitcoin.Transaction.fromHex(rawTx);
+  let ok = false;
 
-  //if success
-  await setSession(sessionId, { status: "CONFIRMED" });
-  res.json({ success: true });
+  tx.outs.forEach((output, index) => {
+    const { value, script } = output;
+    const scriptPubKey = script.toString("hex"); //공개키로 바꿔야함
+
+    console.log(receiverPubKey, scriptPubKey);
+    if (receiverPubKey == scriptPubKey && amount == value) {
+      ok = true;
+    }
+  });
+
+  // sendTX
+  if (ok) {
+    await setSession(sessionId, { status: "CONFIRMED", tx: tx.getId() });
+    res.json({ success: true });
+  } else {
+    res.json({ success: false });
+  }
 });
 
 app.get("/status", async (req, res) => {
