@@ -16,14 +16,14 @@ app.get("/", (req, res) => {
 
 app.get("/generate", async (req, res) => {
   const sessionId = uuidv4();
-  const { receiverPubKey, amount } = req.body;
+  const { receiverAddress, amount } = req.body;
   await setSession(sessionId, {
     status: "PENDING",
-    receiverPubKey,
+    receiverAddress,
     amount,
   });
 
-  res.json({ sessionId, receiverPubKey });
+  res.json({ sessionId, receiverAddress });
 });
 
 app.post("/confirm", async (req, res) => {
@@ -35,18 +35,17 @@ app.post("/confirm", async (req, res) => {
   }
 
   //bitcoinTX request
-  // check receiverPubKey & amount
-  const receiverPubKey = session.receiverPubKey;
+  // check receiverAddress & amount
+  const receiverAddress = session.receiverAddress;
   const amount = session.amount;
   const tx = bitcoin.Transaction.fromHex(rawTx);
   let ok = false;
 
   tx.outs.forEach((output, index) => {
     const { value, script } = output;
-    const scriptPubKey = script.toString("hex"); //공개키로 바꿔야함
+    const scriptAddress = bitcoin.address.fromOutputScript(script, network);
 
-    console.log(receiverPubKey, scriptPubKey);
-    if (receiverPubKey == scriptPubKey && amount == value) {
+    if (receiverAddress == scriptAddress && amount == value) {
       ok = true;
     }
   });
