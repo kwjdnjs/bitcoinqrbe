@@ -1,73 +1,15 @@
 const express = require("express");
-const { v4: uuidv4 } = require("uuid");
-const QRCode = require("qrcode");
-const bitcoin = require("bitcoinjs-lib");
-const { setSession, getSession } = require("./utils/sessionStore");
 const app = express();
 const port = process.env.PORT | 8000;
-// testnet 설정
-const network = bitcoin.networks.testnet;
+
+const bitcoinqrRouter = require("./routes/bitcoinqr");
 
 app.use(express.json());
 
+app.use("/bitcoinqr", bitcoinqrRouter);
+
 app.get("/", (req, res) => {
   res.send("hello world");
-});
-
-app.get("/generate", async (req, res) => {
-  const sessionId = uuidv4();
-  const { receiverAddress, amount } = req.body;
-  await setSession(sessionId, {
-    status: "PENDING",
-    receiverAddress,
-    amount,
-  });
-
-  res.json({ sessionId, receiverAddress });
-});
-
-app.post("/confirm", async (req, res) => {
-  const { sessionId, rawTx } = req.body;
-  const session = await getSession(sessionId);
-
-  if (!session || session.status !== "PENDING") {
-    return res.status(400).json({ message: "Invalid session" });
-  }
-
-  //bitcoinTX request
-  // check receiverAddress & amount
-  const receiverAddress = session.receiverAddress;
-  const amount = session.amount;
-  const tx = bitcoin.Transaction.fromHex(rawTx);
-  let ok = false;
-
-  tx.outs.forEach((output, index) => {
-    const { value, script } = output;
-    const scriptAddress = bitcoin.address.fromOutputScript(script, network);
-
-    if (receiverAddress == scriptAddress && amount == value) {
-      ok = true;
-    }
-  });
-
-  // sendTX
-  if (ok) {
-    await setSession(sessionId, { status: "CONFIRMED", tx: tx.getId() });
-    res.json({ success: true });
-  } else {
-    res.json({ success: false });
-  }
-});
-
-app.get("/status", async (req, res) => {
-  const { sessionId } = req.body;
-  const session = await getSession(sessionId);
-
-  if (!session) {
-    return res.status(404).json({ status: "EXPIRED" });
-  }
-
-  res.json({ status: session.status, tx: session.tx || null });
 });
 
 app.listen(port, () => {
