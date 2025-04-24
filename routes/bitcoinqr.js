@@ -6,7 +6,7 @@ const router = express.Router();
 // testnet 설정
 const network = bitcoin.networks.testnet;
 
-router.get("/generate", async (req, res) => {
+router.post("/generate", async (req, res) => {
   const sessionId = uuidv4();
   const { receiverAddress, amount } = req.body;
   await setSession(sessionId, {
@@ -52,7 +52,7 @@ router.post("/confirm", async (req, res) => {
 });
 
 router.get("/status", async (req, res) => {
-  const { sessionId } = req.body;
+  const sessionId = req.query.sessionId;
   const session = await getSession(sessionId);
 
   if (!session) {
