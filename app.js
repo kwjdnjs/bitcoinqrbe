@@ -4,11 +4,13 @@ const cors = require("cors");
 const port = process.env.PORT | 8000;
 
 const bitcoinqrRouter = require("./routes/bitcoinqr");
+const bitcoinRouter = require("./routes/bitcoin");
 
 app.use(express.json());
 app.use(cors());
 
 app.use("/bitcoinqr", bitcoinqrRouter);
+app.use("/bitcoin", bitcoinRouter);
 
 app.get("/", (req, res) => {
   res.send("hello world");
