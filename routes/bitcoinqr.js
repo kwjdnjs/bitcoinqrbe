@@ -19,7 +19,7 @@ router.post("/generate", async (req, res) => {
 });
 
 router.post("/confirm", async (req, res) => {
-  const { sessionId, rawTx } = req.body;
+  const { sessionId, rawTx, senderAddress } = req.body;
   const session = await getSession(sessionId);
 
   if (!session || session.status !== "PENDING") {
@@ -44,7 +44,12 @@ router.post("/confirm", async (req, res) => {
 
   // sendTX
   if (ok) {
-    await setSession(sessionId, { status: "CONFIRMED", tx: tx.getId() });
+    await setSession(sessionId, {
+      status: "CONFIRMED",
+      txId: tx.getId(),
+      senderAddress: senderAddress,
+      amount: amount,
+    });
     res.json({ success: true });
   } else {
     res.json({ success: false });
@@ -59,7 +64,12 @@ router.get("/status", async (req, res) => {
     return res.status(404).json({ status: "EXPIRED" });
   }
 
-  res.json({ status: session.status, tx: session.tx || null });
+  res.json({
+    status: session.status,
+    txId: session.txId || null,
+    senderAddress: session.senderAddress || null,
+    amount: session.amount || null,
+  });
 });
 
 module.exports = router;
